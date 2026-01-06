@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Fiche de contrôle a posteriori – DP OP@LE (Wizard)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Version UMD 8.5.0 -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+
+    <style>
+        :root {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.4;
+        }
+
+        body {
+            background: #f5f5f7;
+            padding-bottom: 6rem;
+        }
+
+        .page {
+            background: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+        }
+
+        .wizard-step {
+            display: none;
+            margin-top: 0.75rem;
+        }
+
+        .import-status.ok {
+            color: #198754;
+        }
+
+        .import-status.error {
+            color: #dc3545;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.1rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .status-low {
+            background: #e5f8ec;
+            color: #1b7a3f;
+        }
+
+        .status-medium {
+            background: #fff4e0;
+            color: #a35b00;
+        }
+
+        .status-high {
+            background: #ffe5e5;
+            color: #a31919;
+        }
+
+        .chips .form-check {
+            margin-right: 0.5rem;
+        }
+
+        textarea[readonly] {
+            background-color: #f8f9fa;
+        }
+
+        .row-amazon {
+            border-left: 4px solid #ffb100;
+        }
+
+        .row-na {
+            background-color: #f8f9fa !important;
+            color: #6c757d;
+        }
+
+        #exportOutput {
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container my-4">
+    <div class="page">
+        <header class="mb-3">
+            <h1 class="h4 mb-1">Fiche de contrôle a posteriori</h1>
+            <p class="text-muted mb-0">
+                Contrôle interne – Exécution budgétaire (DP OP@LE – export YGCDAHM / YGCDA1QS .xlsx)
+            </p>
+        </header>
+
+        <!-- Onglets -->
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-saisie-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-saisie" type="button" role="tab">
+                    Saisie d’une fiche
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-historique-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-historique" type="button" role="tab">
+                    Historique des contrôles
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-risk-tab" data-bs-toggle="tab"
+                        data-bs-target="#tab-risk" type="button" role="tab">
+                    Pilotage & risques
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Onglet Saisie -->
+            <div class="tab-pane fade show active" id="tab-saisie" role="tabpanel">
+
+                <!-- Accordéon Import / Plan de contrôle -->
+                <div class="accordion mb-3" id="accordionDP">
+
+                    <!-- Import DP -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingImport">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapseImport" aria-expanded="true" aria-controls="collapseImport">
+                                Import de la liste des DP (OP@LE – YGCDAHM / YGCDA1QS .xlsx)
+                            </button>
+                        </h2>
+                        <div id="collapseImport" class="accordion-collapse collapse show"
+                             aria-labelledby="headingImport" data-bs-parent="#accordionDP">
+                            <div class="accordion-body">
+                                <section>
+                                    <div class="mb-3">
+                                        <label for="dpFileInput" class="form-label">Fichier d’export YGCDAHM / YGCDA1QS (XLSX) :</label>
+                                        <input type="file" class="form-control form-control-sm" id="dpFileInput" accept=".xlsx,.xls">
+                                        <div class="form-text">
+                                            Le fichier doit contenir au moins : <strong>Classe</strong>, <strong>n°</strong>, <strong>ss-n°</strong>,
+                                            <strong>Fournisseur</strong>, <strong>Montant TTC</strong>, <strong>Objet</strong>.
+                                        </div>
+                                        <div id="dpImportStatus" class="small mt-1 import-status"></div>
+                                    </div>
+
+                                    <div class="mb-1">
+                                        <label for="dpSelect" class="form-label">Sélectionner un DP importé :</label>
+                                        <select id="dpSelect" class="form-select form-select-sm">
+                                            <option value="">-- Aucun DP sélectionné --</option>
+                                        </select>
+                                        <div class="form-text">
+                                            La sélection d’un DP remplit automatiquement « Fournisseur », « Montant engagé » et « Nature de l’achat ».
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plan de contrôle -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingPlan">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapsePlan" aria-expanded="false" aria-controls="collapsePlan">
+                                Plan de contrôle par tirage aléatoire
+                            </button>
+                        </h2>
+                        <div id="collapsePlan" class="accordion-collapse collapse"
+                             aria-labelledby="headingPlan" data-bs-parent="#accordionDP">
+                            <div class="accordion-body">
+                                <section>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-6">
+                                            <label for="samplePeriod" class="form-label">Période scolaire</label>
+                                            <select id="samplePeriod" class="form-select form-select-sm">
+                                                <option value="Période 1">Période 1</option>
+                                                <option value="Période 2">Période 2</option>
+                                                <option value="Période 3">Période 3</option>
+                                                <option value="Période 4">Période 4</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 d-flex align-items-end">
+                                            <div class="d-grid gap-2 w-100">
+                                                <button type="button" id="btnGenerateSample" class="btn btn-sm btn-primary">
+                                                    Générer ~10 DP à contrôler
+                                                </button>
+                                                <button type="button" id="btnReloadSample" class="btn btn-sm btn-outline-secondary">
+                                                    Recharger dernier tirage
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="small text-muted mb-2">
+                                        Le tirage aléatoire est mémorisé (navigateur + cookie).
+                                        En cliquant sur « Contrôler cet DP », la fiche est pré-positionnée en « tirage aléatoire »,
+                                        la ligne passe en statut « en cours » et l’accordéon se ferme.
+                                    </p>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped align-middle mb-0" id="sampleTable">
+                                            <thead class="table-light">
+                                            <tr>
+                                                <th>DP</th>
+                                                <th>Fournisseur</th>
+                                                <th>Montant TTC</th>
+                                                <th>Statut</th>
+                                                <th style="width: 1%; white-space: nowrap;">Action</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <tr><td colspan="5" class="text-muted small">Aucun tirage enregistré pour cette période.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulaire wizard -->
+                <form id="ficheForm">
+                    <section class="border rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h2 class="h6 mb-0">Fiche de contrôle – Étapes 1 à 9</h2>
+                            <span class="badge text-bg-light small">Suivi pas à pas</span>
+                        </div>
+
+                        <!-- Progression -->
+                        <div class="mb-3">
+                            <div class="progress" style="height: 0.6rem;">
+                                <div class="progress-bar" id="wizardProgressFill" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <div class="small text-muted mt-1" id="wizardProgressText">Étape 1 / 9</div>
+                        </div>
+
+                        <!-- Étape 1 -->
+                        <div class="wizard-step" data-step="1">
+                            <h3 class="h6 mb-3">Étape 1 – Identification du dossier contrôlé</h3>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="ficheNumber" class="form-label">N° de fiche</label>
+                                    <input type="text" class="form-control form-control-sm" id="ficheNumber"
+                                           placeholder="AAAA-MM-JJ-0001">
+                                    <div class="form-text small">
+                                        Par défaut : date du jour + compteur, ex. <code>2026-01-05-0001</code>.
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="controlDate" class="form-label">Date du contrôle</label>
+                                    <input type="date" class="form-control form-control-sm" id="controlDate">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="controllerName" class="form-label">Contrôleur</label>
+                                    <input type="text" class="form-control form-control-sm" id="controllerName" placeholder="Nom et prénom">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="serviceName" class="form-label">Service concerné</label>
+                                    <input type="text" class="form-control form-control-sm" id="serviceName" placeholder="Intendance, Administration...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="supplier" class="form-label">Fournisseur</label>
+                                    <input type="text" class="form-control form-control-sm" id="supplier">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="purchaseNature" class="form-label">Nature de l’achat</label>
+                                    <input type="text" class="form-control form-control-sm" id="purchaseNature" placeholder="Objet / type de dépense">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="amountEngaged" class="form-label">Montant engagé</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="amountEngaged">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="amountInvoiced" class="form-label">Montant facturé</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="amountInvoiced">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Type d’achat</label>
+                                    <div class="chips d-flex flex-wrap">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="purchaseType" value="Amazon" id="purchaseTypeAmazon">
+                                            <label class="form-check-label" for="purchaseTypeAmazon"><i class="bi bi-cart-fill me-1 text-warning"></i>Amazon</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="purchaseType" value="Local" id="purchaseTypeLocal">
+                                            <label class="form-check-label" for="purchaseTypeLocal">Fournisseur local / régional</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="purchaseType" value="Autre" id="purchaseTypeAutre">
+                                            <label class="form-check-label" for="purchaseTypeAutre">Autre</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Étape 2 -->
+                        <div class="wizard-step" data-step="2">
+                            <h3 class="h6 mb-3">Étape 2 – Contexte et sélection</h3>
+                            <div class="mb-3">
+                                <label class="form-label">Motif de sélection</label>
+                                <div class="chips d-flex flex-wrap">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="selectionReason"
+                                               value="aleatoire" id="selAlea">
+                                        <label class="form-check-label" for="selAlea"><i class="bi bi-shuffle me-1"></i>Tirage aléatoire</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="selectionReason"
+                                               value="risque" id="selRisque">
+                                        <label class="form-check-label" for="selRisque">Analyse de risques</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="selectionReason"
+                                               value="anomalie" id="selAnomalie">
+                                        <label class="form-check-label" for="selAnomalie">Anomalie signalée</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="selectionReason"
+                                               value="autre" id="selAutre">
+                                        <label class="form-check-label" for="selAutre">Autre</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="budgetPeriod" class="form-label">Période budgétaire concernée</label>
+                                <input type="text" class="form-control form-control-sm" id="budgetPeriod"
+                                       placeholder="Ex : Exercice 2026 – 1er trimestre">
+                            </div>
+                        </div>
+
+                        <!-- Étape 3 -->
+                        <div class="wizard-step" data-step="3">
+                            <h3 class="h6 mb-3">Étape 3 – Vérifications effectuées</h3>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead class="table-light">
+                                    <tr>
+                                        <th>Point de contrôle</th>
+                                        <th>Oui</th>
+                                        <th>Non</th>
+                                        <th>Partiel</th>
+                                        <th>N/A</th>
+                                        <th>Observations</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr>
+                                        <td>Concordance DP / facture finale</td>
+                                        <td class="text-center"><input type="radio" name="check_dp_facture" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_dp_facture" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_dp_facture" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_dp_facture" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Facture conforme et complète</td>
+                                        <td class="text-center"><input type="radio" name="check_facture" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_facture" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_facture" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_facture" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr id="row_exception">
+                                        <td>Procédure d’exception respectée (si Amazon)</td>
+                                        <td class="text-center"><input type="radio" name="check_exception" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_exception" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_exception" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_exception" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Justificatifs présents et lisibles</td>
+                                        <td class="text-center"><input type="radio" name="check_justificatifs" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_justificatifs" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_justificatifs" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_justificatifs" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Traçabilité des retours / avoirs</td>
+                                        <td class="text-center"><input type="radio" name="check_avoirs" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_avoirs" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_avoirs" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_avoirs" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Paiement conforme aux règles</td>
+                                        <td class="text-center"><input type="radio" name="check_paiement" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_paiement" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_paiement" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_paiement" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Choix du fournisseur objectivé</td>
+                                        <td class="text-center"><input type="radio" name="check_fournisseur" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_fournisseur" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_fournisseur" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_fournisseur" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Délai de traitement cohérent</td>
+                                        <td class="text-center"><input type="radio" name="check_delai" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_delai" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_delai" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_delai" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Correction d’anomalies antérieures</td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="oui"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="non"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="partiel"></td>
+                                        <td class="text-center"><input type="radio" name="check_anomalies" value="na"></td>
+                                        <td><input type="text" id="obs_anomalies" class="form-control form-control-sm"></td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Étape 4 -->
+                        <div class="wizard-step" data-step="4">
+                            <h3 class="h6 mb-3">Étape 4 – Constat global</h3>
+                            <div class="mb-3">
+                                <label for="globalSummary" class="form-label">Synthèse du contrôleur</label>
+                                <textarea id="globalSummary" class="form-control form-control-sm"
+                                          placeholder="Faits marquants, analyse, contexte, éléments de risque..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Étape 5 -->
+                        <div class="wizard-step" data-step="5">
+                            <h3 class="h6 mb-3">Étape 5 – Classement du dossier</h3>
+                            <div class="mb-3">
+                                <label class="form-label">Résultat global</label>
+                                <div class="chips d-flex flex-wrap">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="globalResult" value="conforme"
+                                               id="resConforme">
+                                        <label class="form-check-label" for="resConforme">Conforme</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="globalResult" value="reserve"
+                                               id="resReserve">
+                                        <label class="form-check-label" for="resReserve">Conforme avec réserve(s)</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="globalResult" value="non_conforme"
+                                               id="resNonConforme">
+                                        <label class="form-check-label" for="resNonConforme">Non conforme</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="globalIssues" class="form-label">Nature des réserves / non-conformités</label>
+                                <textarea id="globalIssues" class="form-control form-control-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Étape 6 -->
+                        <div class="wizard-step" data-step="6">
+                            <h3 class="h6 mb-3">Étape 6 – Score de contrôle et recommandations</h3>
+                            <p class="small text-muted">
+                                Le score est calculé automatiquement à partir des réponses de l’étape 3 :
+                                <strong>Oui = 3</strong>, <strong>Partiel = 1</strong>, <strong>Non = 0</strong>.
+                                La ligne « Procédure d’exception » est ignorée si l’achat n’est pas Amazon.
+                            </p>
+                            <div class="mb-2">
+                                <span class="badge bg-light text-dark border small" id="scoreSummary">
+                                    Score non calculé
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-1">Niveau de risque</label>
+                                <div id="riskLevelDisplay"></div>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label mb-1">Actions correctives suggérées</label>
+                                <div id="recommendedActions" class="small"></div>
+                            </div>
+                        </div>
+
+                        <!-- Étape 7 -->
+                        <div class="wizard-step" data-step="7">
+                            <h3 class="h6 mb-3">Étape 7 – Actions correctives et suivi</h3>
+                            <div class="mb-3">
+                                <label for="actionsPlanned" class="form-label">Actions à mettre en œuvre</label>
+                                <textarea id="actionsPlanned" class="form-control form-control-sm"></textarea>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="actionOwner" class="form-label">Responsable</label>
+                                    <input type="text" id="actionOwner" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="actionDueDate" class="form-label">Échéance</label>
+                                    <input type="date" id="actionDueDate" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="actionFollowUp" class="form-label">Suivi</label>
+                                    <select id="actionFollowUp" class="form-select form-select-sm">
+                                        <option value="">-- Sélectionner --</option>
+                                        <option value="realise">Réalisé</option>
+                                        <option value="encours">En cours</option>
+                                        <option value="non_realise">Non réalisé</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Étape 8 -->
+                        <div class="wizard-step" data-step="8">
+                            <h3 class="h6 mb-3">Étape 8 – Décision finale</h3>
+                            <div class="mb-3">
+                                <label class="form-label">Décision du contrôleur</label>
+                                <div class="chips d-flex flex-wrap">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="finalDecision"
+                                               value="suivi_simple" id="decSuivi">
+                                        <label class="form-check-label" for="decSuivi">Suivi simple</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="finalDecision"
+                                               value="action_obligatoire" id="decAction">
+                                        <label class="form-check-label" for="decAction">Action corrective obligatoire</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="finalDecision"
+                                               value="recontrole" id="decRecontrole">
+                                        <label class="form-check-label" for="decRecontrole">Recontrôle prioritaire</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="finalComment" class="form-label">Commentaire complémentaire</label>
+                                <textarea id="finalComment" class="form-control form-control-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Étape 9 -->
+                        <div class="wizard-step" data-step="9">
+                            <h3 class="h6 mb-3">Étape 9 – Validation, archivage</h3>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="validatorController" class="form-label">Contrôleur (nom / visa)</label>
+                                    <input type="text" id="validatorController" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="validatorSG" class="form-label">Visa du Secrétaire général (si nécessaire)</label>
+                                    <input type="text" id="validatorSG" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="archiveLocation" class="form-label">Lieu d’archivage</label>
+                                    <input type="text" id="archiveLocation" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="archiveDuration" class="form-label">Durée de conservation</label>
+                                    <input type="text" id="archiveDuration" class="form-control form-control-sm"
+                                           placeholder="Ex : 5 ans">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Navigation wizard -->
+                        <div class="d-flex justify-content-between mt-3">
+                            <button type="button" id="wizardPrev" class="btn btn-sm btn-outline-secondary">
+                                Étape précédente
+                            </button>
+                            <button type="button" id="wizardNext" class="btn btn-sm btn-primary">
+                                Étape suivante
+                            </button>
+                        </div>
+                    </section>
+                </form>
+            </div>
+
+            <!-- Onglet Historique -->
+            <div class="tab-pane fade" id="tab-historique" role="tabpanel">
+                <section class="border rounded p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h2 class="h6 mb-0">Historique des contrôles enregistrés</h2>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="btnRefreshHistory" class="btn btn-sm btn-outline-secondary">
+                                Rafraîchir
+                            </button>
+                            <button type="button" id="btnDownloadHistory" class="btn btn-sm btn-primary">
+                                Télécharger l’historique (JSON)
+                            </button>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-2">
+                        Les enregistrements sont stockés dans le navigateur (localStorage) et recopiés dans un cookie.
+                        Seule la dernière version de chaque contrôle est affichée. Le bouton « Versions » permet d’afficher l’historique.
+                    </p>
+
+                    <!-- Import historique JSON -->
+                    <div class="mb-3">
+                        <label for="historyFileInput" class="form-label small">Importer un historique JSON :</label>
+                        <input type="file" id="historyFileInput" class="form-control form-control-sm" accept=".json,application/json">
+                        <div class="form-text small">
+                            Utiliser un fichier généré par « Télécharger l’historique (JSON) » ou par un export compatible.
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle" id="historyTable">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Date contrôle</th>
+                                <th>N° fiche</th>
+                                <th>DP</th>
+                                <th>Fournisseur</th>
+                                <th>Montant engagé</th>
+                                <th>Score</th>
+                                <th>Niveau de risque</th>
+                                <th>Décision</th>
+                                <th>Versions</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Onglet Pilotage & risques -->
+            <div class="tab-pane fade" id="tab-risk" role="tabpanel">
+                <div class="row g-3 mt-2">
+
+                    <!-- Plan d’action -->
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-light fw-semibold">
+                                Plan d’action (suivi des fiches)
+                            </div>
+                            <div class="card-body">
+
+                                <div class="small mb-2">
+                                    <span class="badge bg-secondary">Nouveau</span>
+                                    <span class="badge bg-warning text-dark">À faire</span>
+                                    <span class="badge bg-info text-dark">En cours</span>
+                                    <span class="badge bg-success">Fait</span>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle" id="actionPlanTable">
+                                        <thead>
+                                        <tr>
+                                            <th>Fiche</th>
+                                            <th>DP</th>
+                                            <th>Action</th>
+                                            <th>Responsable</th>
+                                            <th>Échéance</th>
+                                            <th>Statut</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+
+                    <!-- Radar -->
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-light fw-semibold">
+                                Maîtrise des risques (Radar)
+                            </div>
+                            <div class="card-body" style="height: 320px;">
+                                <canvas id="riskRadarChart"></canvas>
+                                <div class="small text-muted mt-2">
+                                    Échelle 1 → 4 : Minimal → Optimisé.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                
+
+                <!-- Matrice des risques -->
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-light fw-semibold">
+                                Matrice des risques (probabilité / impact)
+                            </div>
+                            <div class="card-body">
+                                <p class="small text-muted mb-2">
+                                    La matrice croise la <strong>probabilité</strong> (colonnes) et l’<strong>impact</strong> (lignes) des dossiers,
+                                    sur 5 niveaux : Nul/Rare → Très élevé.
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm text-center align-middle table-bordered mb-0" id="riskMatrixTable">
+                                        <thead class="table-light">
+                                        <tr>
+                                            <th scope="col" style="width: 16%;"></th>
+                                            <th scope="col">Nul / Rare</th>
+                                            <th scope="col">Faible / peu probable</th>
+                                            <th scope="col">Moyenne / possible</th>
+                                            <th scope="col">Élevée / probable</th>
+                                            <th scope="col">Très élevée / certaine</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr>
+                                            <th scope="row" class="text-start">Impact très fort / très élevé</th>
+                                            <td id="rm_0_0" class="bg-warning" data-toggle="tooltip"></td>
+                                            <td id="rm_0_1" data-toggle="tooltip"></td>
+                                            <td id="rm_0_2" data-toggle="tooltip"></td>
+                                            <td id="rm_0_3" data-toggle="tooltip"></td>
+                                            <td id="rm_0_4" data-toggle="tooltip"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row" class="text-start">Impact fort / élevé</th>
+                                            <td id="rm_1_0" data-toggle="tooltip"></td>
+                                            <td id="rm_1_1" data-toggle="tooltip"></td>
+                                            <td id="rm_1_2" data-toggle="tooltip"></td>
+                                            <td id="rm_1_3" data-toggle="tooltip"></td>
+                                            <td id="rm_1_4" data-toggle="tooltip"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row" class="text-start">Impact moyen</th>
+                                            <td id="rm_2_0" data-toggle="tooltip"></td>
+                                            <td id="rm_2_1" data-toggle="tooltip"></td>
+                                            <td id="rm_2_2" data-toggle="tooltip"></td>
+                                            <td id="rm_2_3" data-toggle="tooltip"></td>
+                                            <td id="rm_2_4" data-toggle="tooltip"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row" class="text-start">Impact faible</th>
+                                            <td id="rm_3_0" data-toggle="tooltip"></td>
+                                            <td id="rm_3_1" data-toggle="tooltip"></td>
+                                            <td id="rm_3_2" data-toggle="tooltip"></td>
+                                            <td id="rm_3_3" data-toggle="tooltip"></td>
+                                            <td id="rm_3_4" data-toggle="tooltip"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row" class="text-start">Impact nul / très faible</th>
+                                            <td id="rm_4_0" data-toggle="tooltip"></td>
+                                            <td id="rm_4_1" data-toggle="tooltip"></td>
+                                            <td id="rm_4_2" data-toggle="tooltip"></td>
+                                            <td id="rm_4_3" data-toggle="tooltip"></td>
+                                            <td id="rm_4_4" data-toggle="tooltip"></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="small text-muted mt-2 mb-0">
+                                    Couleurs indicatives : vert (zone maîtrisée), jaune (vigilance), rouge (prioritaire).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- BARRE D’ACTIONS PERMANENTE -->
+<div class="sticky-bottom bg-white border-top py-2">
+    <div class="container">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" id="btnSaveControl" class="btn btn-success btn-sm">
+                <i class="bi bi-check2-circle me-1"></i> Enregistrer
+            </button>
+            <button type="button" id="btnSaveDraft" class="btn btn-warning btn-sm d-none">
+                <i class="bi bi-save me-1"></i> Sauvegarde
+            </button>
+            <button type="button" id="btnExportJson" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-filetype-json me-1"></i> Export JSON
+            </button>
+            <button type="button" id="btnExportWordSimple" class="btn btn-outline-primary btn-sm">
+                Plan d’action (simplifié) – Word
+            </button>
+            <button type="button" id="btnExportWordDetail" class="btn btn-outline-primary btn-sm">
+                Rapport complet – Word
+            </button>
+            <span class="ms-auto small text-muted">
+                Dernier export (JSON brut) :
+            </span>
+        </div>
+        <textarea id="exportOutput" class="form-control form-control-sm mt-2" rows="2" readonly></textarea>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+    // =========================
+    // Variables globales
+    // =========================
+    let dpData = [];
+    let currentEjLabel = "";
+    let controlsHistory = [];
+    let samplesHistory = [];
+    const STORAGE_KEY = "fiche_controle_dp_list_v2";
+    const COOKIE_NAME = "fiche_controle_dp_v2";
+    const SAMPLE_KEY = "fiche_controle_dp_samples";
+    const SAMPLE_COOKIE = "fiche_controle_dp_samples";
+    const FORM_DRAFT_KEY = "fiche_controle_dp_current_draft_v1";
+    const TOTAL_STEPS = 9;
+    let currentStep = 1;
+
+    let lastScoreInfo = {
+        total: 0,
+        maxPossible: 0,
+        riskCode: null,
+        riskText: "",
+        ratio: 0
+    };
+
+    let formDirty = false;
+    let autoSaveTimer = null;
+    let riskRadarChart = null;
+
+    // =========================
+    // Utilitaires
+    // =========================
+    function setCookie(name, value, days) {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days*24*60*60*1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i=0;i < ca.length;i++) {
+            let c = ca[i];
+            while (c.charAt(0)==' ') c = c.substring(1,c.length);
+            if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length,c.length));
+        }
+        return null;
+    }
+
+    function getTodayString() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    // =========================
+    // Wizard
+    // =========================
+    const wizardSteps = document.querySelectorAll('.wizard-step');
+    const wizardProgressFill = document.getElementById('wizardProgressFill');
+    const wizardProgressText = document.getElementById('wizardProgressText');
+    const wizardPrev = document.getElementById('wizardPrev');
+    const wizardNext = document.getElementById('wizardNext');
+
+    function showStep(step) {
+        currentStep = step;
+        wizardSteps.forEach(st => {
+            st.style.display = (Number(st.dataset.step) === step) ? 'block' : 'none';
+        });
+        const percent = Math.round((step / TOTAL_STEPS) * 100);
+        wizardProgressFill.style.width = percent + "%";
+        wizardProgressText.textContent = "Étape " + step + " / " + TOTAL_STEPS;
+
+        wizardPrev.disabled = (step === 1);
+        wizardNext.textContent = (step === TOTAL_STEPS) ? "Fin du contrôle" : "Étape suivante";
+    }
+
+    wizardPrev.addEventListener('click', () => {
+        if (currentStep > 1) showStep(currentStep - 1);
+    });
+    wizardNext.addEventListener('click', () => {
+        if (currentStep < TOTAL_STEPS) showStep(currentStep + 1);
+    });
+
+    // =========================
+    // Import XLSX YGCDAHM / YGCDA1QS
+    // =========================
+    const fileInput = document.getElementById('dpFileInput');
+    const dpSelect = document.getElementById('dpSelect');
+    const dpImportStatus = document.getElementById('dpImportStatus');
+
+    fileInput.addEventListener('change', handleDPFileImport);
+    dpSelect.addEventListener('change', handleDPSelection);
+
+    function handleDPFileImport(event) {
+        const file = event.target.files[0];
+        dpData = [];
+        dpSelect.innerHTML = '<option value="">-- Aucun DP sélectionné --</option>';
+        dpImportStatus.textContent = '';
+        dpImportStatus.className = 'small mt-1 import-status';
+
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                parseYGCDAHM_XLSX(rows);
+                renderSampleTable();
+            } catch (err) {
+                dpImportStatus.textContent = 'Erreur lors de la lecture du fichier : ' + err.message;
+                dpImportStatus.classList.add('error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function parseYGCDAHM_XLSX(rows) {
+        if (!rows || rows.length === 0) {
+            throw new Error("Fichier sans lignes de données.");
+        }
+        dpData = [];
+
+        const COL_CLASSE = 'Classe';
+        const COL_NO = 'n°';
+        const COL_SSNO = 'ss-n°';
+        const COL_FOUR = 'Fournisseur';
+        const COL_MNT_TTC = 'Montant TTC';
+        const COL_OBJET = 'Objet';
+
+        rows.forEach(row => {
+            const classe = row[COL_CLASSE] ?? "";
+            const num = row[COL_NO] ?? "";
+            const ssnum = row[COL_SSNO] ?? "";
+            const fournisseur = row[COL_FOUR] ?? "";
+            const libelle = row[COL_OBJET] ?? "";
+            const montantRaw = row[COL_MNT_TTC] ?? "";
+
+            if (!classe && !num && !ssnum) return;
+
+            let dpLabel = "";
+            if (classe) dpLabel += classe + " ";
+            if (num) {
+                dpLabel += num;
+                if (ssnum) dpLabel += "/" + ssnum;
+            } else if (ssnum) {
+                dpLabel += ssnum;
+            }
+
+            let montant = "";
+            if (typeof montantRaw === "number") {
+                montant = montantRaw.toString();
+            } else if (typeof montantRaw === "string") {
+                montant = montantRaw.replace(',', '.');
+            }
+
+            dpData.push({
+                dp: dpLabel.trim(),
+                fournisseur,
+                libelle,
+                montant
+            });
+        });
+
+        dpData.forEach((item, index) => {
+            const opt = document.createElement('option');
+            opt.value = index.toString();
+            const label = item.dp || "(DP sans libellé)";
+            opt.textContent = label + (item.libelle ? " – " + item.libelle : "");
+            dpSelect.appendChild(opt);
+        });
+
+        dpImportStatus.textContent = `Import réussi : ${dpData.length} lignes d’DP trouvées.`;
+        dpImportStatus.classList.add('ok');
+    }
+
+    function handleDPSelection() {
+        const idx = dpSelect.value;
+        if (idx === '') {
+            currentEjLabel = "";
+            return;
+        }
+        const item = dpData[Number(idx)];
+        if (!item) return;
+
+        currentEjLabel = item.dp || "";
+
+        const supplierField = document.getElementById('supplier');
+        const natureField = document.getElementById('purchaseNature');
+        const amountEngagedField = document.getElementById('amountEngaged');
+
+        if (item.fournisseur) supplierField.value = item.fournisseur;
+        if (item.libelle) natureField.value = item.libelle;
+        if (item.montant) {
+            const parsed = parseFloat(item.montant.replace(',', '.'));
+            if (!isNaN(parsed)) amountEngagedField.value = parsed.toFixed(2);
+        }
+
+        const supplierUpper = (supplierField.value || "").toUpperCase();
+        const ptAmazon = document.getElementById('purchaseTypeAmazon');
+        const ptLocal = document.getElementById('purchaseTypeLocal');
+
+        if (supplierUpper.includes("AMAZON")) {
+            if (ptAmazon) ptAmazon.checked = true;
+        } else if (supplierField.value.trim() !== "") {
+            if (ptLocal && !ptLocal.checked && !ptAmazon.checked) ptLocal.checked = true;
+        }
+
+        updateExceptionRowState();
+        recomputeScoreAndActions();
+    }
+
+    // =========================
+    // Tirage aléatoire d’DP
+    // =========================
+    const samplePeriodSelect = document.getElementById('samplePeriod');
+    const btnGenerateSample = document.getElementById('btnGenerateSample');
+    const btnReloadSample = document.getElementById('btnReloadSample');
+    const sampleTableBody = document.querySelector('#sampleTable tbody');
+
+    btnGenerateSample.addEventListener('click', generateSampleForPeriod);
+    btnReloadSample.addEventListener('click', renderSampleTable);
+    samplePeriodSelect.addEventListener('change', renderSampleTable);
+
+    function loadSamples() {
+        samplesHistory = [];
+        const ls = localStorage.getItem(SAMPLE_KEY);
+        if (ls) {
+            try { samplesHistory = JSON.parse(ls) || []; } catch(e) { samplesHistory = []; }
+        } else {
+            const ck = getCookie(SAMPLE_COOKIE);
+            if (ck) {
+                try { samplesHistory = JSON.parse(ck) || []; } catch(e) { samplesHistory = []; }
+            }
+        }
+    }
+
+    function saveSamples() {
+        try { localStorage.setItem(SAMPLE_KEY, JSON.stringify(samplesHistory)); } catch(e) {}
+        try { setCookie(SAMPLE_COOKIE, JSON.stringify(samplesHistory), 365); } catch(e) {}
+    }
+
+    function generateSampleForPeriod() {
+        if (!dpData || dpData.length === 0) {
+            alert("Veuillez d’abord importer un fichier YGCDAHM.");
+            return;
+        }
+        const period = samplePeriodSelect.value || "Période inconnue";
+
+        const n = Math.min(10, dpData.length);
+        const selectedIndexes = new Set();
+        while (selectedIndexes.size < n) {
+            const idx = Math.floor(Math.random() * dpData.length);
+            selectedIndexes.add(idx);
+        }
+
+        const items = Array.from(selectedIndexes).map(i => ({
+            dpIndex: i,
+            dpLabel: dpData[i].dp || "",
+            status: "not_started"
+        }));
+
+        samplesHistory.push({
+            period,
+            createdAt: new Date().toISOString(),
+            items
+        });
+
+        saveSamples();
+        renderSampleTable();
+    }
+
+    function getLatestSampleForPeriod(period) {
+        if (!samplesHistory || samplesHistory.length === 0) return null;
+        for (let i = samplesHistory.length - 1; i >= 0; i--) {
+            if (samplesHistory[i].period === period) return samplesHistory[i];
+        }
+        return null;
+    }
+
+    function markSampleStatus(period, dpIndex, newStatus) {
+        loadSamples();
+        for (let i = samplesHistory.length - 1; i >= 0; i--) {
+            const s = samplesHistory[i];
+            if (s.period === period && Array.isArray(s.items)) {
+                s.items.forEach(it => {
+                    if (it.dpIndex === dpIndex) it.status = newStatus;
+                });
+                break;
+            }
+        }
+        saveSamples();
+    }
+
+    function renderSampleTable() {
+        loadSamples();
+        loadHistory();
+        const period = samplePeriodSelect.value;
+        sampleTableBody.innerHTML = "";
+
+        const sample = getLatestSampleForPeriod(period);
+        if (!sample || !sample.items || sample.items.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.className = "text-muted small";
+            td.textContent = "Aucun tirage enregistré pour cette période.";
+            tr.appendChild(td);
+            sampleTableBody.appendChild(tr);
+            return;
+        }
+
+        let changed = false;
+        sample.items.forEach(it => {
+            const dpLabel = dpData[it.dpIndex]?.dp || it.dpLabel || "";
+            if (dpLabel && it.status !== "done") {
+                const hasControl = controlsHistory.some(rec =>
+                    rec.versions &&
+                    rec.versions.length > 0 &&
+                    rec.versions[rec.versions.length - 1].payload &&
+                    rec.versions[rec.versions.length - 1].payload.dpLabel === dpLabel
+                );
+                if (hasControl) {
+                    it.status = "done";
+                    changed = true;
+                }
+            }
+        });
+        if (changed) saveSamples();
+
+        sample.items.forEach(it => {
+            const tr = document.createElement('tr');
+            const data = dpData[it.dpIndex] || { fournisseur: "", montant: "" };
+            const status = it.status || "not_started";
+            const isAmazon = (data.fournisseur || "").toUpperCase().includes("AMAZON");
+
+            if (status === "in_progress") tr.classList.add('table-warning');
+            else if (status === "done") tr.classList.add('table-success');
+            if (isAmazon) tr.classList.add('row-amazon');
+
+            const tdDP = document.createElement('td');
+            tdDP.innerHTML = (isAmazon ? '<i class="bi bi-cart-fill me-1 text-warning" title="Achat Amazon"></i>' : '') +
+                (it.dpLabel || '');
+            tr.appendChild(tdDP);
+
+            const tdF = document.createElement('td');
+            tdF.textContent = data.fournisseur || "";
+            tr.appendChild(tdF);
+
+            const tdM = document.createElement('td');
+            tdM.textContent = data.montant || "";
+            tr.appendChild(tdM);
+
+            const tdStatus = document.createElement('td');
+            tdStatus.className = "small";
+            if (status === "not_started") {
+                tdStatus.innerHTML = '<i class="bi bi-circle me-1 text-muted"></i>Non commencé';
+                tdStatus.classList.add("text-muted");
+            } else if (status === "in_progress") {
+                tdStatus.innerHTML = '<i class="bi bi-hourglass-split me-1 text-warning"></i>En cours';
+            } else if (status === "done") {
+                tdStatus.innerHTML = '<i class="bi bi-check-circle-fill me-1 text-success"></i>Contrôlé';
+            }
+            tr.appendChild(tdStatus);
+
+            const tdAction = document.createElement('td');
+            const btn = document.createElement('button');
+            btn.type = "button";
+            btn.className = "btn btn-sm btn-outline-primary";
+            btn.textContent = "Contrôler cet DP";
+            btn.dataset.dpIndex = it.dpIndex;
+            tdAction.appendChild(btn);
+            tr.appendChild(tdAction);
+
+            sampleTableBody.appendChild(tr);
+        });
+    }
+
+    sampleTableBody.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.tagName === "BUTTON" && target.dataset.dpIndex !== undefined) {
+            const idx = Number(target.dataset.dpIndex);
+            if (!isNaN(idx)) {
+                dpSelect.value = idx.toString();
+                handleDPSelection();
+                currentEjLabel = dpData[idx]?.dp || "";
+
+                const aleaCheck = document.querySelector('input[name="selectionReason"][value="aleatoire"]');
+                if (aleaCheck) aleaCheck.checked = true;
+
+                const controlDateInput = document.getElementById('controlDate');
+                const ficheNumberInput = document.getElementById('ficheNumber');
+                if (!controlDateInput.value) controlDateInput.value = getTodayString();
+                if (!ficheNumberInput.value) ficheNumberInput.value = suggestFicheNumber();
+
+                const supplierField = document.getElementById('supplier');
+                const supplierUpper = (supplierField.value || "").toUpperCase();
+                const ptAmazon = document.getElementById('purchaseTypeAmazon');
+                const ptLocal = document.getElementById('purchaseTypeLocal');
+                if (supplierUpper.includes("AMAZON")) {
+                    if (ptAmazon) ptAmazon.checked = true;
+                } else if (supplierField.value.trim() !== "") {
+                    if (ptLocal && !ptLocal.checked && !ptAmazon.checked) ptLocal.checked = true;
+                }
+
+                updateExceptionRowState();
+                recomputeScoreAndActions();
+
+                const period = samplePeriodSelect.value || "Période inconnue";
+                markSampleStatus(period, idx, "in_progress");
+                renderSampleTable();
+
+                document.querySelectorAll('#accordionDP .accordion-collapse.show')
+                    .forEach(el => bootstrap.Collapse.getOrCreateInstance(el).hide());
+
+                const saisieTabBtn = document.getElementById('tab-saisie-btn');
+                const tab = new bootstrap.Tab(saisieTabBtn);
+                tab.show();
+                showStep(1);
+
+                ficheNumberInput.focus();
+            }
+        }
+    });
+
+    // =========================
+    // Score auto
+    // =========================
+    const scoreSummary = document.getElementById('scoreSummary');
+    const riskLevelDisplay = document.getElementById('riskLevelDisplay');
+    const recommendedActionsDiv = document.getElementById('recommendedActions');
+
+    function getCheckedValue(groupName) {
+        const elts = document.querySelectorAll(`input[name="${groupName}"]`);
+        for (const e of elts) {
+            if (e.checked) return e.value;
+        }
+        return null;
+    }
+
+    function isAmazonPurchase() {
+        const val = getCheckedValue("purchaseType");
+        return val === "Amazon";
+    }
+
+    function updateExceptionRowState() {
+        const tr = document.getElementById('row_exception');
+        const radios = document.querySelectorAll('input[name="check_exception"]');
+        if (!tr || !radios.length) return;
+        if (isAmazonPurchase()) {
+            tr.classList.remove('row-na');
+            radios.forEach(r => { r.disabled = false; });
+        } else {
+            tr.classList.add('row-na');
+            radios.forEach(r => {
+                r.checked = false;
+                r.disabled = true;
+            });
+        }
+    }
+
+    function recomputeScoreAndActions() {
+        updateExceptionRowState();
+
+        const groupsInfo = {
+            check_dp_facture: {
+                label: "Concordance DP / facture finale",
+                action: "Renforcer la concordance entre engagement et facture (mise à jour systématique des DP, contrôle des montants avant liquidation)."
+            },
+            check_facture: {
+                label: "Facture conforme et complète",
+                action: "Exiger une facture conforme et complète avant mise en paiement (compléter les pièces manquantes, rejeter les factures incomplètes)."
+            },
+            check_exception: {
+                label: "Procédure d’exception respectée (Amazon)",
+                action: "Formaliser et faire respecter la procédure d’exception Amazon (autorisation préalable, justification écrite, traçabilité des validations)."
+            },
+            check_justificatifs: {
+                label: "Justificatifs présents et lisibles",
+                action: "Structurer le classement des justificatifs et vérifier systématiquement leur lisibilité (numérisation, nommage standardisé)."
+            },
+            check_avoirs: {
+                label: "Traçabilité des retours / avoirs",
+                action: "Mettre en place un suivi consolidé des retours et avoirs (tableau de suivi, rapprochement avec les DP et factures)."
+            },
+            check_paiement: {
+                label: "Paiement conforme aux règles",
+                action: "Sécuriser la chaîne de paiement (contrôles croisés, visa hiérarchique, séparation des tâches)."
+            },
+            check_fournisseur: {
+                label: "Choix du fournisseur objectivé",
+                action: "Repenser le choix du fournisseur (prioriser marchés publics et fournisseurs locaux lorsque c’est possible, formaliser la justification des achats)."
+            },
+            check_delai: {
+                label: "Délai de traitement cohérent",
+                action: "Réduire les délais de traitement (organisation interne, suivi des relances, mise en place d’indicateurs de délai)."
+            },
+            check_anomalies: {
+                label: "Correction d’anomalies antérieures",
+                action: "Suivre et clôturer les anomalies identifiées lors des contrôles précédents (plan d’actions, vérification de la mise en œuvre)."
+            }
+        };
+
+        const groups = Object.keys(groupsInfo);
+        const isAmazon = isAmazonPurchase();
+        const resultsMap = {};
+        let total = 0;
+        let maxPossible = 0;
+
+        groups.forEach(name => {
+            if (name === "check_exception" && !isAmazon) {
+                return;
+            }
+            maxPossible += 3;
+            const v = getCheckedValue(name);
+            resultsMap[name] = v;
+            if (v === "oui") total += 3;
+            else if (v === "partiel") total += 1;
+        });
+
+        if (maxPossible === 0) {
+            lastScoreInfo = {
+                total: 0,
+                maxPossible: 0,
+                riskCode: null,
+                riskText: "",
+                ratio: 0
+            };
+            scoreSummary.textContent = "Score non calculé (aucun point applicable).";
+            riskLevelDisplay.innerHTML = "";
+            recommendedActionsDiv.innerHTML = "<span class='text-muted'>Compléter les points de contrôle de l’étape 3 pour générer un score et des recommandations.</span>";
+            return;
+        }
+
+        const ratio = total / maxPossible;
+        let riskCode, riskText, pillClass;
+
+        if (ratio >= 0.8) {
+            riskCode = "faible";
+            riskText = "Niveau de risque : faible – Dossier globalement maîtrisé, simple traçabilité.";
+            pillClass = "status-pill status-low";
+        } else if (ratio >= 0.5) {
+            riskCode = "modéré";
+            riskText = "Niveau de risque : modéré – Des améliorations sont nécessaires à court terme.";
+            pillClass = "status-pill status-medium";
+        } else {
+            riskCode = "élevé";
+            riskText = "Niveau de risque : élevé – Plan d’actions correctives structuré et recontrôle prioritaire.";
+            pillClass = "status-pill status-high";
+        }
+
+        lastScoreInfo = {
+            total,
+            maxPossible,
+            riskCode,
+            riskText,
+            ratio
+        };
+
+        scoreSummary.textContent = `Score total : ${total} / ${maxPossible}`;
+        riskLevelDisplay.innerHTML = `<span class="${pillClass}">${riskText}</span>`;
+
+        const recommended = [];
+
+        if (riskCode === "faible") {
+            recommended.push("Maintenir les pratiques actuelles et diffuser les bonnes pratiques au sein de l’équipe.");
+            recommended.push("Intégrer ce type de contrôle dans le plan de contrôle interne pour suivi périodique.");
+        } else if (riskCode === "modéré") {
+            recommended.push("Formaliser un plan d’actions correctives ciblé sur les points partiels ou non conformes.");
+            recommended.push("Rappeler les procédures internes et documenter les modes opératoires (DP, factures, retours).");
+            recommended.push("Programmer un recontrôle sur un échantillon similaire à moyen terme.");
+        } else {
+            recommended.push("Mettre en place un plan d’actions correctives formalisé, avec priorisation, responsables et échéances.");
+            recommended.push("Informer, le cas échéant, le chef d’établissement et l’agent comptable des anomalies majeures.");
+            recommended.push("Programmer un recontrôle prioritaire sur les achats de même nature (même fournisseur, même type de dépense).");
+        }
+
+        Object.entries(groupsInfo).forEach(([name, info]) => {
+            if (name === "check_exception" && !isAmazon) return;
+            const v = resultsMap[name];
+            if (v === "non") {
+                recommended.push(info.action + " (constat : non conforme).");
+            } else if (v === "partiel") {
+                recommended.push(info.action + " (constat : partiellement maîtrisé).");
+            }
+        });
+
+        if (recommended.length === 0) {
+            recommendedActionsDiv.innerHTML = "<span class='text-muted'>Aucune action corrective particulière n’est suggérée au vu des réponses. Vous pouvez néanmoins documenter le suivi à l’étape suivante.</span>";
+        } else {
+            recommendedActionsDiv.innerHTML = "<ul class='mb-0'>" +
+                recommended.map(a => "<li>" + a + "</li>").join("") +
+                "</ul>";
+        }
+    }
+
+    document.querySelectorAll('input[name^="check_"]').forEach(el => {
+        el.addEventListener('change', recomputeScoreAndActions);
+    });
+    document.querySelectorAll('input[name="purchaseType"]').forEach(el => {
+        el.addEventListener('change', () => {
+            updateExceptionRowState();
+            recomputeScoreAndActions();
+        });
+    });
+
+    // =========================
+    // Collecte / export JSON
+    // =========================
+    const btnExportJson = document.getElementById('btnExportJson');
+    const exportOutput = document.getElementById('exportOutput');
+
+    btnExportJson.addEventListener('click', exportAsJson);
+
+    function collectCurrentControlData() {
+        recomputeScoreAndActions();
+        const scoreInfo = lastScoreInfo;
+
+        const selectionReasons = [];
+        document.querySelectorAll('input[name="selectionReason"]:checked')
+            .forEach(c => selectionReasons.push(c.value));
+
+        const step3 = {
+            check_dp_facture_status: getCheckedValue('check_dp_facture'),
+            obs_dp_facture: document.getElementById('obs_dp_facture').value,
+            check_facture_status: getCheckedValue('check_facture'),
+            obs_facture: document.getElementById('obs_facture').value,
+            check_exception_status: getCheckedValue('check_exception'),
+            obs_exception: document.getElementById('obs_exception').value,
+            check_justificatifs_status: getCheckedValue('check_justificatifs'),
+            obs_justificatifs: document.getElementById('obs_justificatifs').value,
+            check_avoirs_status: getCheckedValue('check_avoirs'),
+            obs_avoirs: document.getElementById('obs_avoirs').value,
+            check_paiement_status: getCheckedValue('check_paiement'),
+            obs_paiement: document.getElementById('obs_paiement').value,
+            check_fournisseur_status: getCheckedValue('check_fournisseur'),
+            obs_fournisseur: document.getElementById('obs_fournisseur').value,
+            check_delai_status: getCheckedValue('check_delai'),
+            obs_delai: document.getElementById('obs_delai').value,
+            check_anomalies_status: getCheckedValue('check_anomalies'),
+            obs_anomalies: document.getElementById('obs_anomalies').value
+        };
+
+        return {
+            ficheNumber: document.getElementById('ficheNumber').value,
+            controlDate: document.getElementById('controlDate').value,
+            controllerName: document.getElementById('controllerName').value,
+            serviceName: document.getElementById('serviceName').value,
+            supplier: document.getElementById('supplier').value,
+            purchaseNature: document.getElementById('purchaseNature').value,
+            amountEngaged: document.getElementById('amountEngaged').value,
+            amountInvoiced: document.getElementById('amountInvoiced').value,
+            purchaseType: getCheckedValue('purchaseType'),
+            budgetPeriod: document.getElementById('budgetPeriod').value,
+            selectionReasons,
+            globalSummary: document.getElementById('globalSummary').value,
+            globalResult: getCheckedValue('globalResult'),
+            globalIssues: document.getElementById('globalIssues').value,
+            actionsPlanned: document.getElementById('actionsPlanned').value,
+            actionOwner: document.getElementById('actionOwner').value,
+            actionDueDate: document.getElementById('actionDueDate').value,
+            actionFollowUp: document.getElementById('actionFollowUp').value,
+            finalDecision: getCheckedValue('finalDecision'),
+            finalComment: document.getElementById('finalComment').value,
+            validatorController: document.getElementById('validatorController').value,
+            validatorSG: document.getElementById('validatorSG').value,
+            archiveLocation: document.getElementById('archiveLocation').value,
+            archiveDuration: document.getElementById('archiveDuration').value,
+            dpLabel: currentEjLabel,
+            scoreTotal: scoreInfo.total,
+            scoreMaxPossible: scoreInfo.maxPossible,
+            riskCode: scoreInfo.riskCode,
+            riskText: scoreInfo.riskText,
+            ratioScore: (scoreInfo.maxPossible > 0 ? scoreInfo.total / scoreInfo.maxPossible : null),
+            savedAt: new Date().toISOString(),
+            ...step3
+        };
+    }
+
+    function exportAsJson() {
+        const controlData = collectCurrentControlData();
+        exportOutput.value = JSON.stringify(controlData, null, 2);
+    }
+
+    // =========================
+    // Historique + versioning
+    // =========================
+    const btnSaveControl = document.getElementById('btnSaveControl');
+    const historyTableBody = document.querySelector('#historyTable tbody');
+    const btnRefreshHistory = document.getElementById('btnRefreshHistory');
+    const btnDownloadHistory = document.getElementById('btnDownloadHistory');
+    const historyFileInput = document.getElementById('historyFileInput');
+    const btnSaveDraft = document.getElementById('btnSaveDraft');
+
+    btnSaveControl.addEventListener('click', () => {
+        loadHistory();
+
+        const data = collectCurrentControlData();
+
+        if (!data.controlDate) data.controlDate = getTodayString();
+        if (!data.ficheNumber) data.ficheNumber = suggestFicheNumber();
+
+        data.ficheNumber = ensureUniqueFicheNumberForEj(data.ficheNumber, data.dpLabel);
+        document.getElementById('ficheNumber').value = data.ficheNumber;
+
+        data.savedAt = new Date().toISOString();
+
+        saveControlWithVersioning(data);
+        exportOutput.value = JSON.stringify(data, null, 2);
+
+        try { localStorage.removeItem(FORM_DRAFT_KEY); } catch(e) {}
+        formDirty = false;
+        if (btnSaveDraft) btnSaveDraft.classList.add('d-none');
+
+        alert("Contrôle enregistré (version mise à jour).");
+        renderHistoryTable();
+        renderSampleTable();
+        refreshRiskRadar();
+        refreshActionPlan();
+        refreshRiskMatrix();
+    });
+
+    function loadHistory() {
+        controlsHistory = [];
+        const ls = localStorage.getItem(STORAGE_KEY);
+        if (ls) {
+            try {
+                const parsed = JSON.parse(ls) || [];
+                controlsHistory = normalizeHistory(parsed);
+                return;
+            } catch (e) {
+                controlsHistory = [];
+            }
+        }
+        const ck = getCookie(COOKIE_NAME);
+        if (ck) {
+            try {
+                const parsed = JSON.parse(ck) || [];
+                controlsHistory = normalizeHistory(parsed);
+            } catch (e) {
+                controlsHistory = [];
+            }
+        }
+    }
+
+    function normalizeHistory(data) {
+        if (!Array.isArray(data)) return [];
+        if (data.length === 0) return [];
+        if (data[0] && data[0].versions) {
+            return data;
+        }
+        return data.map((item, idx) => ({
+            id: (item.ficheNumber || "ID" + idx) + "||" + (item.dpLabel || ""),
+            ficheNumber: item.ficheNumber || "",
+            dpLabel: item.dpLabel || "",
+            archived: item.archived || false,
+            versions: [{
+                changeType: "CREATION",
+                controllerName: item.controllerName || "",
+                savedAt: item.savedAt || new Date().toISOString(),
+                payload: item
+            }]
+        }));
+    }
+
+    function incrementFicheNumber(ficheNumber) {
+        const today = getTodayString();
+        let baseDate = today;
+        let index = 0;
+
+        const m = ficheNumber.match(/^(\d{4}-\d{2}-\d{2})-(\d{4})$/);
+        if (m) {
+            baseDate = m[1];
+            index = parseInt(m[2], 10);
+        } else {
+            const m2 = ficheNumber.match(/^(\d{4}-\d{2}-\d{2})$/);
+            if (m2) baseDate = m2[1];
+        }
+        index = index + 1;
+        return `${baseDate}-${String(index).padStart(4, '0')}`;
+    }
+
+    function ensureUniqueFicheNumberForEj(ficheNumber, dpLabel) {
+        loadHistory();
+
+        let fn = ficheNumber || (getTodayString() + "-0001");
+        const dp = dpLabel || "";
+
+        const existingForEj = controlsHistory.find(r => r.dpLabel === dp);
+        if (existingForEj) {
+            return existingForEj.ficheNumber || fn;
+        }
+
+        while (controlsHistory.some(r => r.ficheNumber === fn)) {
+            fn = incrementFicheNumber(fn);
+        }
+
+        return fn;
+    }
+
+    function persistHistory() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(controlsHistory)); } catch(e) {}
+        try { setCookie(COOKIE_NAME, JSON.stringify(controlsHistory), 365); } catch(e) {}
+    }
+
+    function saveControlWithVersioning(data) {
+        loadHistory();
+
+        const keyBase = (data.ficheNumber || "") + "||" + (data.dpLabel || "");
+        let record = controlsHistory.find(r => r.id === keyBase);
+
+        const changeType = record ? "MODIFICATION" : "CREATION";
+
+        if (!record) {
+            record = {
+                id: keyBase,
+                ficheNumber: data.ficheNumber || "",
+                dpLabel: data.dpLabel || "",
+                archived: false,
+                versions: []
+            };
+            controlsHistory.push(record);
+        }
+
+        record.ficheNumber = data.ficheNumber || record.ficheNumber;
+        record.dpLabel = data.dpLabel || record.dpLabel;
+
+        record.versions.push({
+            changeType,
+            controllerName: data.controllerName || "",
+            savedAt: data.savedAt || new Date().toISOString(),
+            payload: data
+        });
+
+        persistHistory();
+    }
+
+    function renderHistoryTable() {
+        loadHistory();
+        historyTableBody.innerHTML = "";
+
+        if (!controlsHistory || controlsHistory.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 10;
+            td.textContent = "Aucun contrôle enregistré.";
+            td.className = "text-muted small";
+            tr.appendChild(td);
+            historyTableBody.appendChild(tr);
+            return;
+        }
+
+        const sorted = [...controlsHistory].sort((a, b) => {
+            const av = a.versions[a.versions.length - 1].payload.savedAt || "";
+            const bv = b.versions[b.versions.length - 1].payload.savedAt || "";
+            return bv.localeCompare(av);
+        });
+
+        sorted.forEach(rec => {
+            const latest = rec.versions[rec.versions.length - 1].payload;
+
+            const tr = document.createElement('tr');
+            if (rec.archived) tr.classList.add('table-secondary');
+
+            const tdDate = document.createElement('td');
+            tdDate.textContent = latest.controlDate || "";
+            tr.appendChild(tdDate);
+
+            const tdFiche = document.createElement('td');
+            tdFiche.textContent = latest.ficheNumber || "";
+            tr.appendChild(tdFiche);
+
+            const tdEj = document.createElement('td');
+            tdEj.textContent = latest.dpLabel || "";
+            tr.appendChild(tdEj);
+
+            const tdFour = document.createElement('td');
+            tdFour.textContent = latest.supplier || "";
+            tr.appendChild(tdFour);
+
+            const tdMontant = document.createElement('td');
+            tdMontant.textContent = latest.amountEngaged || "";
+            tr.appendChild(tdMontant);
+
+            const tdScore = document.createElement('td');
+            if (latest.scoreTotal !== undefined && latest.scoreMaxPossible !== undefined && latest.scoreMaxPossible > 0) {
+                tdScore.textContent = latest.scoreTotal + " / " + latest.scoreMaxPossible;
+            } else tdScore.textContent = "";
+            tr.appendChild(tdScore);
+
+            const tdRisk = document.createElement('td');
+            tdRisk.textContent = latest.riskCode || "";
+            tr.appendChild(tdRisk);
+
+            const tdDecision = document.createElement('td');
+            tdDecision.textContent = latest.finalDecision || "";
+            tr.appendChild(tdDecision);
+
+            const tdVersions = document.createElement('td');
+            const btnVersions = document.createElement('button');
+            btnVersions.type = "button";
+            btnVersions.className = "btn btn-sm btn-outline-secondary";
+            btnVersions.textContent = "Versions";
+
+            const tooltipLines = rec.versions.map((v, idx) => {
+                const d = (v.savedAt || "").replace('T', ' ').substring(0, 19);
+                const ctrl = v.controllerName || "n.c.";
+                return `v${idx + 1} – ${v.changeType} – ${d} – ${ctrl}`;
+            });
+            btnVersions.setAttribute('data-bs-toggle', 'tooltip');
+            btnVersions.setAttribute('data-bs-placement', 'left');
+            btnVersions.setAttribute('title', tooltipLines.join('\n'));
+
+            tdVersions.appendChild(btnVersions);
+            tr.appendChild(tdVersions);
+
+            const tdActions = document.createElement('td');
+            const group = document.createElement('div');
+            group.className = "btn-group btn-group-sm";
+
+            const btnEdit = document.createElement('button');
+            btnEdit.type = "button";
+            btnEdit.className = "btn btn-outline-primary";
+            btnEdit.textContent = "Éditer";
+            btnEdit.dataset.recordId = rec.id;
+            btnEdit.dataset.action = "edit";
+
+            const btnArchive = document.createElement('button');
+            btnArchive.type = "button";
+            btnArchive.className = "btn btn-outline-secondary";
+            btnArchive.textContent = "Archiver";
+            btnArchive.dataset.recordId = rec.id;
+            btnArchive.dataset.action = "archive";
+
+            const btnDelete = document.createElement('button');
+            btnDelete.type = "button";
+            btnDelete.className = "btn btn-outline-danger";
+            btnDelete.textContent = "Supprimer";
+            btnDelete.dataset.recordId = rec.id;
+            btnDelete.dataset.action = "delete";
+
+            group.appendChild(btnEdit);
+            group.appendChild(btnArchive);
+            group.appendChild(btnDelete);
+            tdActions.appendChild(group);
+            tr.appendChild(tdActions);
+
+            historyTableBody.appendChild(tr);
+        });
+
+        enableTooltips();
+    }
+
+    function downloadHistoryJson() {
+        loadHistory();
+        const dataStr = JSON.stringify(controlsHistory, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "historique_controles_dp_versions.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    historyFileInput.addEventListener('change', handleHistoryImport);
+
+    function handleHistoryImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                const normalized = normalizeHistory(imported);
+                controlsHistory = normalized;
+                persistHistory();
+                renderHistoryTable();
+                renderSampleTable();
+                refreshRiskRadar();
+                refreshActionPlan();
+                refreshRiskMatrix();
+                alert("Historique importé avec succès.");
+            } catch (err) {
+                alert("Erreur lors de l’import de l’historique JSON : " + err.message);
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+
+    btnRefreshHistory.addEventListener('click', () => {
+        renderHistoryTable();
+        refreshActionPlan();
+        refreshRiskRadar();
+        refreshRiskMatrix();
+    });
+    btnDownloadHistory.addEventListener('click', downloadHistoryJson);
+
+    historyTableBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const recordId = btn.dataset.recordId;
+        if (!action || !recordId) return;
+
+        if (action === "edit") {
+            editRecord(recordId);
+        } else if (action === "archive") {
+            archiveRecord(recordId);
+        } else if (action === "delete") {
+            deleteRecord(recordId);
+        }
+    });
+
+    function applyControlDataToForm(latest) {
+        document.getElementById('ficheNumber').value = latest.ficheNumber || "";
+        document.getElementById('controlDate').value = latest.controlDate || "";
+        document.getElementById('controllerName').value = latest.controllerName || "";
+        document.getElementById('serviceName').value = latest.serviceName || "";
+        document.getElementById('supplier').value = latest.supplier || "";
+        document.getElementById('purchaseNature').value = latest.purchaseNature || "";
+        document.getElementById('amountEngaged').value = latest.amountEngaged || "";
+        document.getElementById('amountInvoiced').value = latest.amountInvoiced || "";
+        document.getElementById('budgetPeriod').value = latest.budgetPeriod || "";
+        document.getElementById('globalSummary').value = latest.globalSummary || "";
+        document.getElementById('globalIssues').value = latest.globalIssues || "";
+        document.getElementById('actionsPlanned').value = latest.actionsPlanned || "";
+        document.getElementById('actionOwner').value = latest.actionOwner || "";
+        document.getElementById('actionDueDate').value = latest.actionDueDate || "";
+        document.getElementById('actionFollowUp').value = latest.actionFollowUp || "";
+        document.getElementById('finalComment').value = latest.finalComment || "";
+        document.getElementById('validatorController').value = latest.validatorController || "";
+        document.getElementById('validatorSG').value = latest.validatorSG || "";
+        document.getElementById('archiveLocation').value = latest.archiveLocation || "";
+        document.getElementById('archiveDuration').value = latest.archiveDuration || "";
+        currentEjLabel = latest.dpLabel || "";
+
+        document.querySelectorAll('input[name="purchaseType"]').forEach(r => r.checked = false);
+        if (latest.purchaseType) {
+            const r = document.querySelector(`input[name="purchaseType"][value="${latest.purchaseType}"]`);
+            if (r) r.checked = true;
+        }
+
+        document.querySelectorAll('input[name="selectionReason"]').forEach(c => c.checked = false);
+        if (Array.isArray(latest.selectionReasons)) {
+            latest.selectionReasons.forEach(val => {
+                const c = document.querySelector(`input[name="selectionReason"][value="${val}"]`);
+                if (c) c.checked = true;
+            });
+        }
+
+        document.querySelectorAll('input[name="globalResult"]').forEach(r => r.checked = false);
+        if (latest.globalResult) {
+            const r = document.querySelector(`input[name="globalResult"][value="${latest.globalResult}"]`);
+            if (r) r.checked = true;
+        }
+
+        document.querySelectorAll('input[name="finalDecision"]').forEach(r => r.checked = false);
+        if (latest.finalDecision) {
+            const r = document.querySelector(`input[name="finalDecision"][value="${latest.finalDecision}"]`);
+            if (r) r.checked = true;
+        }
+
+        const step3Keys = [
+            "dp_facture",
+            "facture",
+            "exception",
+            "justificatifs",
+            "avoirs",
+            "paiement",
+            "fournisseur",
+            "delai",
+            "anomalies"
+        ];
+        step3Keys.forEach(key => {
+            const statusField = latest[`check_${key}_status`];
+            const obsField = latest[`obs_${key}`];
+            const radios = document.querySelectorAll(`input[name="check_${key}"]`);
+            radios.forEach(r => r.checked = false);
+            if (statusField) {
+                const r = document.querySelector(`input[name="check_${key}"][value="${statusField}"]`);
+                if (r) r.checked = true;
+            }
+            const obsInput = document.getElementById(`obs_${key}`);
+            if (obsInput) obsInput.value = obsField || "";
+        });
+
+        updateExceptionRowState();
+        recomputeScoreAndActions();
+    }
+
+    function editRecord(recordId) {
+        loadHistory();
+        const rec = controlsHistory.find(r => r.id === recordId);
+        if (!rec || !rec.versions || rec.versions.length === 0) return;
+        const latest = rec.versions[rec.versions.length - 1].payload;
+
+        applyControlDataToForm(latest);
+
+        const saisieTabBtn = document.getElementById('tab-saisie-btn');
+        const tab = new bootstrap.Tab(saisieTabBtn);
+        tab.show();
+        showStep(1);
+        document.getElementById('ficheNumber').focus();
+
+        saveCurrentDraft(false);
+    }
+
+    function archiveRecord(recordId) {
+        loadHistory();
+        const rec = controlsHistory.find(r => r.id === recordId);
+        if (!rec) return;
+        rec.archived = true;
+        persistHistory();
+        renderHistoryTable();
+        refreshActionPlan();
+        refreshRiskRadar();
+        refreshRiskMatrix();
+    }
+
+    function deleteRecord(recordId) {
+        if (!confirm("Confirmez-vous la suppression définitive de cette fiche de contrôle ?")) {
+            return;
+        }
+        loadHistory();
+        controlsHistory = controlsHistory.filter(r => r.id !== recordId);
+        persistHistory();
+        renderHistoryTable();
+        renderSampleTable();
+        refreshActionPlan();
+        refreshRiskRadar();
+        refreshRiskMatrix();
+    }
+
+    function suggestFicheNumber() {
+        loadHistory();
+        const today = getTodayString();
+        const base = today + "-";
+        let maxIndex = 0;
+
+        controlsHistory.forEach(rec => {
+            const fn = rec.ficheNumber || "";
+            if (fn.startsWith(base)) {
+                const suffix = fn.slice(base.length);
+                const num = parseInt(suffix, 10);
+                if (!isNaN(num) && num > maxIndex) maxIndex = num;
+            }
+        });
+
+        const next = String(maxIndex + 1).padStart(4, '0');
+        return base + next;
+    }
+
+    function initDefaultFiche() {
+        const controlDateInput = document.getElementById('controlDate');
+        const ficheNumberInput = document.getElementById('ficheNumber');
+        const today = getTodayString();
+
+        if (!controlDateInput.value) controlDateInput.value = today;
+        if (!ficheNumberInput.value) ficheNumberInput.value = suggestFicheNumber();
+    }
+
+    // =========================
+    // Sauvegarde automatique brouillon
+    // =========================
+    function saveCurrentDraft(auto = false) {
+        const data = collectCurrentControlData();
+        data._isDraft = true;
+        data._draftSavedAt = new Date().toISOString();
+        try { localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(data)); } catch(e) {}
+        if (!auto && btnSaveDraft) {
+            formDirty = false;
+            btnSaveDraft.classList.add('d-none');
+        }
+    }
+
+    function loadCurrentDraft() {
+        const raw = localStorage.getItem(FORM_DRAFT_KEY);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            if (!data || typeof data !== "object") return;
+            applyControlDataToForm(data);
+        } catch(e) {}
+    }
+
+    function setupFormAutoSave() {
+        const form = document.getElementById('ficheForm');
+        if (!form || !btnSaveDraft) return;
+
+        const markDirty = () => {
+            formDirty = true;
+            btnSaveDraft.classList.remove('d-none');
+            if (autoSaveTimer) clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                if (formDirty) {
+                    saveCurrentDraft(true);
+                }
+            }, 1000);
+        };
+
+        form.querySelectorAll('input, textarea, select').forEach(el => {
+            el.addEventListener('input', markDirty);
+            el.addEventListener('change', markDirty);
+        });
+
+        btnSaveDraft.addEventListener('click', () => {
+            saveCurrentDraft(false);
+        });
+    }
+
+    // =========================
+    // Radar risques
+    // =========================
+    function computeRiskMaturityFromHistory() {
+        loadHistory();
+
+        if (!controlsHistory || controlsHistory.length === 0) {
+            return [0, 0, 0, 0, 0, 0];
+        }
+
+        const domains = [
+            { label: "Conformité budgétaire", fields: ["check_ej_facture_status","check_facture_status","check_paiement_status"] },
+            { label: "Traçabilité documentaire", fields: ["check_justificatifs_status","check_avoirs_status"] },
+            { label: "Procédures d’achats", fields: ["check_fournisseur_status","check_exception_status"] },
+            { label: "Qualité des justificatifs", fields: ["check_justificatifs_status"] },
+            { label: "Gestion retours / litiges", fields: ["check_avoirs_status","check_anomalies_status"] },
+            { label: "Sécurisation du processus", fields: ["check_delai_status","check_paiement_status"] }
+        ];
+
+        function statusToPoints(status) {
+            if (status === "oui") return 3;
+            if (status === "partiel") return 1;
+            if (status === "non") return 0;
+            return null;
+        }
+
+        const domainScores = domains.map(() => ({ score: 0, max: 0 }));
+
+        controlsHistory.forEach(rec => {
+            if (rec.archived) return;
+            if (!rec.versions || rec.versions.length === 0) return;
+
+            const latest = rec.versions[rec.versions.length - 1].payload || {};
+
+            domains.forEach((dom, idx) => {
+                dom.fields.forEach(f => {
+                    const pts = statusToPoints(latest[f]);
+                    if (pts === null) return;
+                    domainScores[idx].score += pts;
+                    domainScores[idx].max += 3;
+                });
+            });
+        });
+
+        // conversion 0..100% => 0..5
+        return domainScores.map(ds => {
+            if (ds.max === 0) return 0;
+            const ratio = ds.score / ds.max;
+
+            if (ratio >= 0.95) return 5;
+            if (ratio >= 0.80) return 4;
+            if (ratio >= 0.60) return 3;
+            if (ratio >= 0.40) return 2;
+            if (ratio >= 0.20) return 1;
+            return 0;
+        });
+    }
+
+    function refreshRiskRadar() {
+        const canvas = document.getElementById('riskRadarChart');
+        if (!canvas) return;
+
+        const values = computeRiskMaturityFromHistory();
+
+        const labels = [
+            "Conformité budgétaire",
+            "Traçabilité documentaire",
+            "Procédures d’achats",
+            "Qualité des justificatifs",
+            "Gestion retours / litiges",
+            "Sécurisation du processus"
+        ];
+
+        if (riskRadarChart) riskRadarChart.destroy();
+
+        riskRadarChart = new Chart(canvas, {
+            type: 'radar',
+            data: {
+                labels,
+                datasets: [{
+                    label: "Niveau de maîtrise (1 = minimal, 4 = optimisé)",
+                    data: values,
+                    borderWidth: 2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    r: {
+                        suggestedMin: 0,
+                        suggestedMax: 4,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        pointLabels: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // =========================
+    // Matrice des risques 5×5
+    // =========================
+    function computeRiskMatrixFromHistory() {
+        loadHistory();
+
+        // 5 lignes (impact) x 5 colonnes (probabilité)
+        // Lignes (0 = impact très fort, 4 = impact nul)
+        // Colonnes (0 = prob nul, 4 = prob très élevée)
+        const matrix = [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0]
+        ];
+
+        if (!controlsHistory || controlsHistory.length === 0) return matrix;
+
+        controlsHistory.forEach(rec => {
+            if (rec.archived) return;
+            if (!rec.versions || rec.versions.length === 0) return;
+            const latest = rec.versions[rec.versions.length - 1].payload || {};
+
+            // Ratio de score
+            let ratio = null;
+            if (typeof latest.ratioScore === "number") {
+                ratio = latest.ratioScore;
+            } else if (latest.scoreMaxPossible > 0) {
+                ratio = latest.scoreTotal / latest.scoreMaxPossible;
+            }
+
+            // Impact index (0 très fort / 4 nul)
+            let impactIdx = 3; // par défaut impact faible/moyen
+            if (latest.globalResult === "non_conforme") {
+                if (ratio !== null && ratio < 0.4) impactIdx = 0; // très fort
+                else impactIdx = 1;                               // fort
+            } else if (latest.globalResult === "reserve") {
+                if (ratio !== null && ratio < 0.6) impactIdx = 2; // moyen
+                else impactIdx = 3;                               // faible
+            } else { // conforme ou non renseigné
+                if (ratio !== null && ratio >= 0.9) impactIdx = 4; // nul
+                else impactIdx = 3;                                // faible
+            }
+
+            // Probabilité index (0 nul / 4 très élevée)
+            let probIdx = 2; // moyenne par défaut
+            if (ratio !== null) {
+                if (ratio >= 0.95) probIdx = 0;      // prob nul / rare
+                else if (ratio >= 0.8) probIdx = 1;  // faible
+                else if (ratio >= 0.6) probIdx = 2;  // moyenne
+                else if (ratio >= 0.4) probIdx = 3;  // élevée
+                else probIdx = 4;                    // très élevée
+            } else if (latest.riskCode) {
+                if (latest.riskCode === "faible") probIdx = 1;
+                else if (latest.riskCode === "modéré") probIdx = 2;
+                else if (latest.riskCode === "élevé") probIdx = 4;
+            }
+
+            if (impactIdx < 0 || impactIdx > 4 || probIdx < 0 || probIdx > 4) return;
+            matrix[impactIdx][probIdx] += 1;
+        });
+
+        return matrix;
+    }
+
+    function computeRiskMatrixBuckets() {
+        // 5 x 5, chaque cellule contient un tableau de numéros de fiches
+        const buckets = Array.from({ length: 5 }, () =>
+            Array.from({ length: 5 }, () => [])
+        );
+
+        loadHistory();
+        if (!controlsHistory || controlsHistory.length === 0) {
+            return buckets;
+        }
+
+        controlsHistory.forEach(rec => {
+            if (rec.archived) return;
+            if (!rec.versions || rec.versions.length === 0) return;
+
+            const latest = rec.versions[rec.versions.length - 1].payload || {};
+
+            // On reprend la même logique de classement que computeRiskMatrixFromHistory()
+            let ratio = null;
+            if (typeof latest.ratioScore === "number") {
+                ratio = latest.ratioScore;
+            } else if (latest.scoreMaxPossible > 0) {
+                ratio = latest.scoreTotal / latest.scoreMaxPossible;
+            }
+
+            // Impact (0 = très fort / très élevé, 4 = nul / très faible)
+            let impactIdx = 3;
+            if (latest.globalResult === "non_conforme") {
+                if (ratio !== null && ratio < 0.4) impactIdx = 0;
+                else impactIdx = 1;
+            } else if (latest.globalResult === "reserve") {
+                if (ratio !== null && ratio < 0.6) impactIdx = 2;
+                else impactIdx = 3;
+            } else {
+                if (ratio !== null && ratio >= 0.9) impactIdx = 4;
+                else impactIdx = 3;
+            }
+
+            // Probabilité (0 = nul / rare, 4 = très élevée)
+            let probIdx = 2;
+            if (ratio !== null) {
+                if (ratio >= 0.95) probIdx = 0;
+                else if (ratio >= 0.8) probIdx = 1;
+                else if (ratio >= 0.6) probIdx = 2;
+                else if (ratio >= 0.4) probIdx = 3;
+                else probIdx = 4;
+            } else if (latest.riskCode) {
+                if (latest.riskCode === "faible") probIdx = 1;
+                else if (latest.riskCode === "modéré") probIdx = 2;
+                else if (latest.riskCode === "élevé") probIdx = 4;
+            }
+
+            if (impactIdx < 0 || impactIdx > 4 || probIdx < 0 || probIdx > 4) return;
+
+            const fiche = latest.ficheNumber || "(sans n°)";
+            buckets[impactIdx][probIdx].push(fiche);
+        });
+
+        return buckets;
+    }
+
+    function refreshRiskMatrix() {
+        const matrix = computeRiskMatrixFromHistory();
+        const buckets = computeRiskMatrixBuckets();
+
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                const cell = document.getElementById(`rm_${i}_${j}`);
+                if (!cell) continue;
+
+                const val = matrix[i][j];
+
+                // Affichage numérique
+                cell.textContent = val > 0 ? val : "";
+
+                // Reset des classes
+                cell.className = "text-center align-middle fw-semibold";
+
+                // Couleur en fonction de la sévérité
+                const severity = (4 - i) + j; // 0..8
+                if (severity <= 3) {
+                    cell.classList.add("bg-success");
+                } else if (severity <= 6) {
+                    cell.classList.add("bg-warning");
+                } else {
+                    cell.classList.add("bg-danger");
+                }
+
+                // Infobulle : références de fiches (bucket)
+                const list = (buckets[i] && buckets[i][j]) ? buckets[i][j] : [];
+                if (list.length > 0) {
+                    cell.title = "Fiches concernées : " + list.join(", ");
+                } else {
+                    cell.title = "Aucune fiche";
+                }
+            }
+        }
+    }
+
+    // =========================
+    // Plan d’action
+    // =========================
+    function deriveActionStatus(payload) {
+        const hasAction = (payload.actionsPlanned || "").trim().length > 0;
+        const follow = payload.actionFollowUp || "";
+
+        if (!hasAction) {
+            return { code: "new", label: "Nouveau", badgeClass: "bg-secondary" };
+        }
+        if (follow === "realise") {
+            return { code: "done", label: "Fait", badgeClass: "bg-success" };
+        }
+        if (follow === "encours") {
+            return { code: "progress", label: "En cours", badgeClass: "bg-info text-dark" };
+        }
+        if (follow === "non_realise") {
+            return { code: "todo", label: "À faire", badgeClass: "bg-warning text-dark" };
+        }
+        return { code: "todo", label: "À faire", badgeClass: "bg-warning text-dark" };
+    }
+
+    function refreshActionPlan() {
+        const tbody = document.querySelector("#actionPlanTable tbody");
+        if (!tbody) return;
+        loadHistory();
+        tbody.innerHTML = "";
+
+        if (!controlsHistory || controlsHistory.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.className = "text-muted small";
+            td.textContent = "Aucune fiche enregistrée.";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+
+        controlsHistory.forEach(row => {
+            if (!row.versions || row.versions.length === 0) return;
+            const latest = row.versions[row.versions.length - 1].payload || {};
+            const stat = deriveActionStatus(latest);
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${latest.ficheNumber || ""}</td>
+                <td>${latest.dpLabel || ""}</td>
+                <td>${(latest.actionsPlanned || "").replace(/\n/g, "<br>") || "-"}</td>
+                <td>${latest.actionOwner || "-"}</td>
+                <td>${latest.actionDueDate || "-"}</td>
+                <td><span class="badge ${stat.badgeClass}">${stat.label}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function collectActionPlanData() {
+        loadHistory();
+        const list = [];
+
+        controlsHistory.forEach(r => {
+            if (!r.versions || r.versions.length === 0) return;
+            const p = r.versions[r.versions.length - 1].payload;
+
+            list.push({
+                fiche: p.ficheNumber || "",
+                dp: p.dpLabel || "",
+                action: p.actionsPlanned || "",
+                owner: p.actionOwner || "",
+                dueDate: p.actionDueDate || "",
+                follow: p.actionFollowUp || "",
+                score: `${p.scoreTotal || 0}/${p.scoreMaxPossible || 0}`,
+                risk: p.riskCode || "",
+                summary: p.globalSummary || ""
+            });
+        });
+
+        return list;
+    }
+
+    async function getRadarImage() {
+        const canvas = document.getElementById("riskRadarChart");
+        return canvas.toDataURL("image/png");
+    }
+
+    // Construit une image PNG de la matrice de risques à partir des données calculées
+    function buildRiskMatrixImageDataUrl() {
+        const matrix = computeRiskMatrixFromHistory();
+
+        const rows = 5;
+        const cols = 5;
+        const cellSize = 60;          // taille visuelle d’une case
+        const borderWidth = 1;
+
+        const width = cols * cellSize + borderWidth;
+        const height = rows * cellSize + borderWidth;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+
+        // Style texte
+        ctx.font = "12px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < cols; j++) {
+                const val = matrix[i][j];
+
+                // Reprise de la logique de sévérité de refreshRiskMatrix()
+                const severity = (4 - i) + j; // 0..8
+
+                let fillColor;
+                if (severity <= 3) {
+                    // bg-success approx
+                    fillColor = "#d1e7dd";
+                } else if (severity <= 6) {
+                    // bg-warning approx
+                    fillColor = "#fff3cd";
+                } else {
+                    // bg-danger approx
+                    fillColor = "#f8d7da";
+                }
+
+                const x = j * cellSize;
+                const y = i * cellSize;
+
+                // Fond
+                ctx.fillStyle = fillColor;
+                ctx.fillRect(x, y, cellSize, cellSize);
+
+                // Bordure
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = borderWidth;
+                ctx.strokeRect(x, y, cellSize, cellSize);
+
+                // Valeur
+                if (val && val > 0) {
+                    ctx.fillStyle = "#000000";
+                    ctx.fillText(String(val), x + cellSize / 2, y + cellSize / 2);
+                }
+            }
+        }
+
+        return canvas.toDataURL("image/png");
+    }
+
+    // Utilisé par l’export Word détaillé
+    async function getMatrixImage() {
+        return buildRiskMatrixImageDataUrl();
+    }
+
+    async function exportWordSimple() {
+        const { Document, Packer, Paragraph, TextRun } = docx;
+        const data = collectActionPlanData();
+
+        const paragraphs = [
+            new Paragraph({
+                children: [new TextRun({ text: "Plan d’action simplifié", bold: true, size: 28 })]
+            }),
+            new Paragraph("")
+        ];
+
+        data.forEach(d => {
+            paragraphs.push(
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: `Fiche ${d.fiche} — DP ${d.dp}`, bold: true })
+                    ]
+                }),
+                new Paragraph(`Action : ${d.action || "-"}`),
+                new Paragraph(`Responsable : ${d.owner || "-"}`),
+                new Paragraph(`Date prévue : ${d.dueDate || "-"}`),
+                new Paragraph(`Statut : ${d.follow || "-"}`),
+                new Paragraph("")
+            );
+        });
+
+        const doc = new Document({ sections: [{ children: paragraphs }] });
+
+        const blob = await Packer.toBlob(doc);
+        downloadFile(blob, "plan_action_simplifie.docx");
+    }
+
+    async function exportWordDetailed() {
+        const { Document, Packer, Paragraph, TextRun, ImageRun } = docx;
+
+        const data = collectActionPlanData();
+        const radar = await getRadarImage();
+        const matrix = await getMatrixImage();
+
+        const children = [
+            new Paragraph({ children: [new TextRun({ text: "Rapport de contrôle interne", bold: true, size: 30 })] }),
+            new Paragraph(""),
+            new Paragraph({ children: [new TextRun({ text: "Radar de maîtrise des risques", bold: true })] }),
+            new Paragraph(new ImageRun({ data: await fetchImage(radar), transformation: { width: 500, height: 350 } })),
+            new Paragraph(""),
+            new Paragraph({ children: [new TextRun({ text: "Matrice des risques", bold: true })] }),
+            new Paragraph(new ImageRun({ data: await fetchImage(matrix), transformation: { width: 500, height: 350 } })),
+            new Paragraph(""),
+            new Paragraph({ children: [new TextRun({ text: "Plan d’action détaillé", bold: true, size: 26 })] }),
+            new Paragraph("")
+        ];
+
+        data.forEach(d => {
+            children.push(
+                new Paragraph({ children: [new TextRun({ text: `Fiche ${d.fiche} — DP ${d.dp}`, bold: true })] }),
+                new Paragraph(`Résumé : ${d.summary || "-"}`),
+                new Paragraph(`Score / risque : ${d.score} — ${d.risk}`),
+                new Paragraph(`Action : ${d.action || "-"}`),
+                new Paragraph(`Responsable : ${d.owner || "-"}`),
+                new Paragraph(`Date prévue : ${d.dueDate || "-"}`),
+                new Paragraph(`Suivi : ${d.follow || "-"}`),
+                new Paragraph("")
+            );
+        });
+
+        const doc = new Document({ sections: [{ children }] });
+
+        const blob = await Packer.toBlob(doc);
+        downloadFile(blob, "rapport_controle_interne.docx");
+    }
+
+    async function fetchImage(dataUrl) {
+        const res = await fetch(dataUrl);
+        return await res.arrayBuffer();
+    }
+
+    function downloadFile(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("btnExportWordSimple")
+        .addEventListener("click", exportWordSimple);
+
+    document.getElementById("btnExportWordDetail")
+        .addEventListener("click", exportWordDetailed);
+
+    // =========================
+    // Tooltips Bootstrap
+    // =========================
+    function enableTooltips() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+    }
+
+    // =========================
+    // Initialisation
+    // =========================
+    (function init() {
+        loadHistory();
+        loadSamples();
+        showStep(1);
+        renderSampleTable();
+        renderHistoryTable();
+        initDefaultFiche();
+        updateExceptionRowState();
+        recomputeScoreAndActions();
+        loadCurrentDraft();
+        setupFormAutoSave();
+        refreshRiskRadar();
+        refreshActionPlan();
+        refreshRiskMatrix();
+
+        const riskTabBtn = document.getElementById('tab-risk-tab');
+        if (riskTabBtn) {
+            riskTabBtn.addEventListener('shown.bs.tab', () => {
+                refreshRiskRadar();
+                refreshRiskMatrix();
+            });
+        }
+    })();
+</script>
+</body>
+</html>
