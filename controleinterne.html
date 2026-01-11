@@ -801,6 +801,9 @@
             </span>
         </div>
         <textarea id="exportOutput" class="form-control form-control-sm mt-2" rows="2" readonly></textarea>
+        <footer class="text-center">
+            <small id="app-version"></small>
+        </footer>
     </div>
 </div>
 
@@ -810,6 +813,20 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
+/**
+ * Audit Op@le - Contrôel interne / audit chaine de dépense
+ * Basé sur exports Op@le : YGCDAHM, YGCDA1QS
+ *
+ * @version 0.1.0
+ * @author Yann Bogdanovic
+ * @description
+ *  - Outil OP@LE pour contrôle interne
+ */
+	const APP_VERSION = "CIMR OP@LE - 0.1.0";
+	window.addEventListener("DOMContentLoaded", () => {
+		const el = document.getElementById("app-version");
+		if (el) el.textContent = APP_VERSION;
+	});
     // =========================
     // Variables globales
     // =========================
